@@ -3,16 +3,17 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
 
 const (
-	USERNAME = "root"
-	PASSWORD = "*******"
+	USERNAME = ""
+	PASSWORD = "*****"
 	NETWORK  = "tcp"
-	SERVER   = "localhost"
+	SERVER   = "******"
 	PORT     = 3306
-	DATABASE = "blog"
+	DATABASE = "*****"
 )
 
 type Img struct {
@@ -25,7 +26,7 @@ type Img struct {
 }
 
 func getConn() *sql.DB {
-	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", USERNAME, PASSWORD, NETWORK, SERVER, PORT, DATABASE)
+	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s?charset=utf8&parseTime=true&loc=Local", USERNAME, PASSWORD, NETWORK, SERVER, PORT, DATABASE)
 	DB, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Printf("Open mysql failed,err:%v\n", err)
@@ -45,34 +46,57 @@ func closeConn(db *sql.DB) bool {
 	return true
 }
 
-func InsertImg(img Img) {
+//插入图片记录信息
+func InsertImg(img *Img) error {
 	DB := getConn()
-	result, err := DB.Exec("insert INTO imgs(name,dir,alias,desc,upload_time) values(?,?,?,?,?)", img.Name, img.Dir, img.Alias, img.Desc, img.UploadTime)
+	result, err := DB.Exec("insert INTO imgs(`name`,`dir`,`alias`,`desc`,`upload_time`) values(?,?,?,?,?)", img.Name, img.Dir, img.Alias, img.Desc, img.UploadTime)
 	if err != nil {
 		fmt.Printf("Insert failed,err:%v", err)
 		closeConn(DB)
-		return
+		return err
 	}
 	lastInsertID, err := result.LastInsertId() //插入数据的主键id
 	fmt.Println("LastInsertID:", lastInsertID)
 	if err != nil {
 		fmt.Printf("Get lastInsertID failed,err:%v", err)
 		closeConn(DB)
-		return
+		return err
 	}
 	closeConn(DB)
+	return nil
 }
 
-func QueryByAlias(alias string) {
+//根据别名获取图片信息
+func QueryByAlias(alias string) (Img, error) {
 	DB := getConn()
-	img := new(Img)
-	row := DB.QueryRow("select * from imgs where alias=?", alias)
+	img := Img{}
+	querySql := "select * from imgs where alias= '" + alias + "'"
+	row := DB.QueryRow(querySql)
 	//row.scan中的字段必须是按照数据库存入字段的顺序，否则报错
-	if err := row.Scan(&img.ID, &img.Name, &img.Dir, &img.Alias, &img.Desc, &img.UploadTime); err != nil {
+	err := row.Scan(&img.ID, &img.Name, &img.Dir, &img.Alias, &img.Desc, &img.UploadTime)
+	if err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		closeConn(DB)
-		return
+		return img, err
 	}
 	closeConn(DB)
-	fmt.Println(*img)
+	return img, err
+}
+
+func QueryMulti() {
+	DB := getConn()
+	img := Img{}
+	rows, err := DB.Query("select * from imgs")
+	if err != nil {
+		fmt.Printf("Query failed,err:%v", err)
+		return
+	}
+	for rows.Next() {
+		err = rows.Scan(&img.ID, &img.Name, &img.Dir, &img.Alias, &img.Desc, &img.UploadTime) //不scan会导致连接不释放
+		if err != nil {
+			fmt.Printf("Scan failed,err:%v", err)
+			return
+		}
+		fmt.Println(img)
+	}
 }

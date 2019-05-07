@@ -10,6 +10,6 @@ import (
 func main() {
 	router := httprouter.New()
 	router.POST("/upload", httphandler.Upload)
-	router.GET("/download/:name", httphandler.Download)
-	log.Fatal(http.ListenAndServe(":8080", router))
+	router.GET("/download/:alias", httphandler.Download)
+	log.Fatal(http.ListenAndServe(":9999", router))
 }
