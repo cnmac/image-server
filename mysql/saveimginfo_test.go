@@ -22,3 +22,7 @@ func TestQueryByAlias(t *testing.T) {
 func TestQueryMulti(t *testing.T) {
 	QueryMulti()
 }
+
+func TestDeleteByAlias(t *testing.T) {
+	DeleteByAlias("1557250459977830800")
+}

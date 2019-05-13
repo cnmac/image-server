@@ -83,6 +83,19 @@ func QueryByAlias(alias string) (Img, error) {
 	return img, err
 }
 
+//根据别名删除文件
+func DeleteByAlias(alias string) error {
+	DB := getConn()
+	querySql := "delete from imgs where alias= '" + alias + "'"
+	_, err := DB.Exec(querySql)
+	if err != nil {
+		fmt.Printf("delete failed, err:%v", err)
+		return err
+	}
+	closeConn(DB)
+	return nil
+}
+
 func QueryMulti() {
 	DB := getConn()
 	img := Img{}

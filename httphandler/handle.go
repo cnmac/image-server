@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const FILE_ROOT_PATH = "/var/mcimage/"
+
 func Upload(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Welcome!\n")
 	auth := r.FormValue("auth")
@@ -26,8 +28,8 @@ func Upload(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// 检查图片后缀
 	ext := strings.ToLower(path.Ext(header.Filename))
 	//auth := strings.ToLower(header.)
-	if ext != ".jpg" && ext != ".png" {
-		common.ErrorHandle(errors.New("只支持jpg/png图片上传"), w)
+	if ext != ".jpg" && ext != ".png" && ext != ".gif" {
+		common.ErrorHandle(errors.New("只支持jpg/png/gif图片上传"), w)
 		return
 	}
 	if header.Size > 1*1024*1024 {
@@ -44,7 +46,7 @@ func Upload(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	//}
 
 	// 保存图片
-	os.MkdirAll("./uploaded/"+strconv.Itoa(dirName)+"/", 0777)
+	os.MkdirAll(FILE_ROOT_PATH+strconv.Itoa(dirName)+"/", 0777)
 	saveFile, err := os.OpenFile("./uploaded/"+strconv.Itoa(dirName)+"/"+trueName, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		common.ErrorHandle(err, w)
@@ -72,7 +74,7 @@ func Download(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if err != nil {
 		common.ErrorHandle(errors.New("查询mysql出差或该文件不存在"), w)
 	}
-	fileUrl := "./uploaded/" + strconv.Itoa(img.Dir) + "/" + img.Name
+	fileUrl := FILE_ROOT_PATH + strconv.Itoa(img.Dir) + "/" + img.Name
 	exist, err := pathExists(fileUrl)
 	if err != nil {
 		common.ErrorHandle(errors.New("判断文件夹是否存在时出错"), w)
@@ -80,8 +82,29 @@ func Download(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	if !exist {
 		common.ErrorHandle(errors.New("mysql记录有该文件，而文件夹不存在该文件"), w)
+		return
 	}
 	http.ServeFile(w, r, fileUrl)
+}
+
+func Delete(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	img, err := mysql.QueryByAlias(ps.ByName("alias"))
+	if err != nil {
+		common.ErrorHandle(errors.New("查询mysql出差或该文件不存在"), w)
+		return
+	}
+	fileUrl := "FILE_ROOT_PATH" + strconv.Itoa(img.Dir) + "/" + img.Name
+	exist, err := pathExists(fileUrl)
+	if !exist {
+		common.ErrorHandle(errors.New("mysql记录有该文件，而文件夹不存在该文件"), w)
+		return
+	} else {
+		err := os.Remove(fileUrl)
+		if err != nil {
+			common.ErrorHandle(errors.New("os.remove执行删除文件失败！"), w)
+		}
+	}
+	mysql.DeleteByAlias(img.Alias)
 }
 
 func pathExists(path string) (bool, error) {
